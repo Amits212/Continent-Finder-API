@@ -3,7 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from database import SessionLocal
 from crud import (
     get_countries, get_country_by_name, create_country, update_country, delete_country,
-    get_continents, get_continent_by_name, create_continent, update_continent, delete_continent
+    get_continents, get_continent_by_name, create_continent, update_continent, delete_continent,
+    get_countries_by_updated_at
 )
 from schemas import Country, CountryCreate, CountryUpdate, Continent, ContinentCreate, ContinentUpdate
 from fastapi_pagination import Page, add_pagination, paginate
@@ -73,5 +74,16 @@ async def delete_existing_continent(continent_name: str, db: AsyncSession = Depe
     if continent is None:
         raise HTTPException(status_code=404, detail="Continent not found")
     return {"message": "Continent deleted successfully"}
+
+@router.get("/countries/updated_at", response_model=Page[Country])
+async def read_countries_by_updated_at(
+    start_date: Optional[datetime] = Query(None),
+    end_date: Optional[datetime] = Query(None),
+    skip: int = 0,
+    limit: int = 10,
+    db: AsyncSession = Depends(get_db)
+):
+    countries = await get_countries_by_updated_at(db, start_date, end_date,skip, limit)
+    return paginate(countries)
 
 add_pagination(router)

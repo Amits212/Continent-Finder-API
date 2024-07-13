@@ -75,3 +75,22 @@ async def delete_continent(db: AsyncSession, continent_name: str):
     await db.delete(continent)
     await db.commit()
     return continent
+
+async def get_countries_by_updated_at(
+        db: AsyncSession,
+        start_date: Optional[datetime],
+        end_date: Optional[datetime],
+        skip: int = 0,
+        limit: int = 10
+) -> List[Country]:
+    query = select(Country).offset(skip).limit(limit)
+
+    if start_date and end_date:
+        query = query.filter(Country.updated_at.between(start_date, end_date))
+    elif start_date:
+        query = query.filter(Country.updated_at >= start_date)
+    elif end_date:
+        query = query.filter(Country.updated_at <= end_date)
+
+    result = await db.execute(query)
+    return result.scalars().all()
