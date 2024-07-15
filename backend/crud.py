@@ -1,17 +1,16 @@
-from sqlalchemy.ext.asyncio import AsyncSession
+from datetime import datetime
+from typing import Optional
 from sqlalchemy.future import select
 from sqlalchemy.orm import joinedload
+from sqlalchemy.ext.asyncio import AsyncSession
 from models import Country as DBCountry, Continent as DBContinent
 from schemas import CountryCreate, CountryUpdate, ContinentCreate, ContinentUpdate
 
+async def get_countries_query(db: AsyncSession, skip: int = 0, limit: int = 10):
+    return select(DBCountry).offset(skip).limit(limit)
 
-async def get_countries(db: AsyncSession, skip: int = 0, limit: int = 10):
-    result = await db.execute(select(DBCountry).offset(skip).limit(limit))
-    return result.scalars().all()
-
-async def get_country_by_name(db: AsyncSession, country_name: str):
-    result = await db.execute(select(DBCountry).filter(DBCountry.name == country_name).options(joinedload(DBCountry.continent)))
-    return result.scalar()
+async def get_country_by_name_query(db: AsyncSession, country_name: str):
+    return select(DBCountry).filter(DBCountry.name == country_name).options(joinedload(DBCountry.continent))
 
 async def create_country(db: AsyncSession, country: CountryCreate):
     db_country = DBCountry(**country.dict())
@@ -21,7 +20,8 @@ async def create_country(db: AsyncSession, country: CountryCreate):
     return db_country
 
 async def update_country(db: AsyncSession, country_code: str, country: CountryUpdate):
-    result = await db.execute(select(DBCountry).filter(DBCountry.code == country_code))
+    query = select(DBCountry).filter(DBCountry.code == country_code)
+    result = await db.execute(query)
     db_country = result.scalar()
     if db_country is None:
         return None
@@ -32,7 +32,8 @@ async def update_country(db: AsyncSession, country_code: str, country: CountryUp
     return db_country
 
 async def delete_country(db: AsyncSession, country_code: str):
-    result = await db.execute(select(DBCountry).filter(DBCountry.code == country_code))
+    query = select(DBCountry).filter(DBCountry.code == country_code)
+    result = await db.execute(query)
     country = result.scalar()
     if country is None:
         return None
@@ -40,14 +41,11 @@ async def delete_country(db: AsyncSession, country_code: str):
     await db.commit()
     return country
 
+async def get_continents_query(db: AsyncSession, skip: int = 0, limit: int = 10):
+    return select(DBContinent).offset(skip).limit(limit)
 
-async def get_continents(db: AsyncSession, skip: int = 0, limit: int = 10):
-    result = await db.execute(select(DBContinent).offset(skip).limit(limit))
-    return result.scalars().all()
-
-async def get_continent_by_name(db: AsyncSession, continent_name: str):
-    result = await db.execute(select(DBContinent).filter(DBContinent.name == continent_name))
-    return result.scalar()
+async def get_continent_by_name_query(db: AsyncSession, continent_name: str):
+    return select(DBContinent).filter(DBContinent.name == continent_name)
 
 async def create_continent(db: AsyncSession, continent: ContinentCreate):
     db_continent = DBContinent(**continent.dict())
@@ -57,7 +55,8 @@ async def create_continent(db: AsyncSession, continent: ContinentCreate):
     return db_continent
 
 async def update_continent(db: AsyncSession, continent_name: str, continent: ContinentUpdate):
-    result = await db.execute(select(DBContinent).filter(DBContinent.name == continent_name))
+    query = select(DBContinent).filter(DBContinent.name == continent_name)
+    result = await db.execute(query)
     db_continent = result.scalar()
     if db_continent is None:
         return None
@@ -68,7 +67,8 @@ async def update_continent(db: AsyncSession, continent_name: str, continent: Con
     return db_continent
 
 async def delete_continent(db: AsyncSession, continent_name: str):
-    result = await db.execute(select(DBContinent).filter(DBContinent.name == continent_name))
+    query = select(DBContinent).filter(DBContinent.name == continent_name)
+    result = await db.execute(query)
     continent = result.scalar()
     if continent is None:
         return None
@@ -76,21 +76,18 @@ async def delete_continent(db: AsyncSession, continent_name: str):
     await db.commit()
     return continent
 
-async def get_countries_by_updated_at(
+async def get_countries_by_updated_at_query(
         db: AsyncSession,
         start_date: Optional[datetime],
         end_date: Optional[datetime],
         skip: int = 0,
         limit: int = 10
-) -> List[Country]:
-    query = select(Country).offset(skip).limit(limit)
-
+):
+    query = select(DBCountry).offset(skip).limit(limit)
     if start_date and end_date:
-        query = query.filter(Country.updated_at.between(start_date, end_date))
+        query = query.filter(DBCountry.updated_at.between(start_date, end_date))
     elif start_date:
-        query = query.filter(Country.updated_at >= start_date)
+        query = query.filter(DBCountry.updated_at >= start_date)
     elif end_date:
-        query = query.filter(Country.updated_at <= end_date)
-
-    result = await db.execute(query)
-    return result.scalars().all()
+        query = query.filter(DBCountry.updated_at <= end_date)
+    return query

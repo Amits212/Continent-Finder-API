@@ -14,7 +14,7 @@ class ContinentUpdate(BaseModel):
 
 class Continent(ContinentBase):
     class Config:
-        orm_mode = True
+        from_attributes = True
 
 class CountryBase(BaseModel):
     code: str
@@ -39,4 +39,4 @@ class Country(CountryBase):
     continent: Optional[Continent] = None
 
     class Config:
-        orm_mode = True
+        from_attributes = True

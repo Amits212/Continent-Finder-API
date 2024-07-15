@@ -1,13 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from database import SessionLocal
-from crud import (
-    get_countries, get_country_by_name, create_country, update_country, delete_country,
-    get_continents, get_continent_by_name, create_continent, update_continent, delete_continent,
-    get_countries_by_updated_at
-)
-from schemas import Country, CountryCreate, CountryUpdate, Continent, ContinentCreate, ContinentUpdate
-from fastapi_pagination import Page, add_pagination, paginate
+from schemas import Country, CountryCreate, CountryUpdate, Continent, ContinentUpdate, ContinentCreate
+from fastapi_pagination import Page, add_pagination
+from fastapi_pagination.ext.async_sqlalchemy import paginate
+from crud import get_countries_query, get_country_by_name_query, create_country, update_country, delete_country, \
+    delete_continent, update_continent, create_continent, get_continent_by_name_query, get_continents_query, \
+    get_countries_by_updated_at_query
+from datetime import datetime
+from typing import Optional
 
 router = APIRouter()
 
@@ -16,13 +17,15 @@ async def get_db():
         yield db
 
 @router.get("/countries", response_model=Page[Country])
-async def read_countries(skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)):
-    countries = await get_countries(db, skip=skip, limit=limit)
-    return paginate(countries)
+async def read_countries(db: AsyncSession = Depends(get_db)):
+    query = await get_countries_query(db)
+    return await paginate(db, query)
 
 @router.get("/country/{country_name}", response_model=Country)
 async def read_country_by_name(country_name: str, db: AsyncSession = Depends(get_db)):
-    country = await get_country_by_name(db, country_name)
+    query = await get_country_by_name_query(db, country_name)
+    result = await db.execute(query)
+    country = result.scalar()
     if country is None:
         raise HTTPException(status_code=404, detail="Country not found")
     return country
@@ -46,13 +49,15 @@ async def delete_existing_country(country_code: str, db: AsyncSession = Depends(
     return {"message": "Country deleted successfully"}
 
 @router.get("/continents", response_model=Page[Continent])
-async def read_continents(skip: int = 0, limit: int = 10, db: AsyncSession = Depends(get_db)):
-    continents = await get_continents(db, skip=skip, limit=limit)
-    return paginate(continents)
+async def read_continents(db: AsyncSession = Depends(get_db)):
+    query = await get_continents_query(db)
+    return await paginate(db, query)
 
 @router.get("/continent/{continent_name}", response_model=Continent)
 async def read_continent_by_name(continent_name: str, db: AsyncSession = Depends(get_db)):
-    continent = await get_continent_by_name(db, continent_name)
+    query = await get_continent_by_name_query(db, continent_name)
+    result = await db.execute(query)
+    continent = result.scalar()
     if continent is None:
         raise HTTPException(status_code=404, detail="Continent not found")
     return continent
@@ -79,11 +84,9 @@ async def delete_existing_continent(continent_name: str, db: AsyncSession = Depe
 async def read_countries_by_updated_at(
     start_date: Optional[datetime] = Query(None),
     end_date: Optional[datetime] = Query(None),
-    skip: int = 0,
-    limit: int = 10,
     db: AsyncSession = Depends(get_db)
 ):
-    countries = await get_countries_by_updated_at(db, start_date, end_date,skip, limit)
-    return paginate(countries)
+    query = await get_countries_by_updated_at_query(db, start_date, end_date)
+    return await paginate(db, query)
 
 add_pagination(router)
